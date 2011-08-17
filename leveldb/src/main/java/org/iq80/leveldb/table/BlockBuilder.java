@@ -17,15 +17,16 @@
  */
 package org.iq80.leveldb.table;
 
+import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Ints;
 import org.iq80.leveldb.util.IntVector;
 import org.iq80.leveldb.util.VariableLengthQuantity;
 import org.jboss.netty.buffer.ChannelBuffer;
-import org.iq80.leveldb.util.Buffers;
 
 import java.util.Comparator;
 
+import static com.google.common.base.Charsets.UTF_8;
 import static org.iq80.leveldb.util.SizeOf.SIZE_OF_INT;
 
 public class BlockBuilder
@@ -33,15 +34,15 @@ public class BlockBuilder
     private final ChannelBuffer buffer;
     private final int blockRestartInterval;
     private final IntVector restartPositions;
-    private final Comparator<ChannelBuffer> comparator;
+    private final Comparator<byte[]> comparator;
 
     private int entryCount;
     private int restartBlockEntryCount;
 
     private boolean finished;
-    private ChannelBuffer lastKey = Buffers.dynamicBuffer(128);
+    private byte[] lastKey = new byte[0];
 
-    public BlockBuilder(ChannelBuffer buffer, int blockRestartInterval, Comparator<ChannelBuffer> comparator)
+    public BlockBuilder(ChannelBuffer buffer, int blockRestartInterval, Comparator<byte[]> comparator)
     {
         Preconditions.checkNotNull(buffer, "buffer is null");
         Preconditions.checkArgument(blockRestartInterval >= 0, "blockRestartInterval is negative");
@@ -62,7 +63,7 @@ public class BlockBuilder
         restartPositions.clear();
         restartPositions.add(0); // first restart point must be 0
         restartBlockEntryCount = 0;
-        lastKey.clear();
+        lastKey = new byte[0];
         finished = false;
     }
 
@@ -99,15 +100,15 @@ public class BlockBuilder
         add(blockEntry.getKey(), blockEntry.getValue());
     }
 
-    public void add(ChannelBuffer key, ChannelBuffer value)
+    public void add(byte[] key, ChannelBuffer value)
     {
         Preconditions.checkNotNull(key, "key is null");
         Preconditions.checkNotNull(value, "value is null");
         Preconditions.checkState(!finished, "block is finished");
         Preconditions.checkPositionIndex(restartBlockEntryCount, blockRestartInterval);
 
-        if (lastKey.readable() && comparator.compare(key, lastKey) <= 0) {
-            Preconditions.checkArgument(!lastKey.readable() || comparator.compare(key, lastKey) > 0, "key must be greater than last key");
+        if (lastKey.length > 0 && comparator.compare(key, lastKey) <= 0) {
+            Preconditions.checkArgument(lastKey.length == 0 || comparator.compare(key, lastKey) > 0, "key %s must be greater than last key %s", new String(key, UTF_8), new String(lastKey, UTF_8));
         }
 
         int sharedKeyBytes = 0;
@@ -120,7 +121,7 @@ public class BlockBuilder
             restartBlockEntryCount = 0;
         }
 
-        int nonSharedKeyBytes = key.readableBytes() - sharedKeyBytes;
+        int nonSharedKeyBytes = key.length - sharedKeyBytes;
 
         // write "<shared><non_shared><value_size>"
         VariableLengthQuantity.packInt(sharedKeyBytes, buffer);
@@ -134,22 +135,21 @@ public class BlockBuilder
         buffer.writeBytes(value, 0, value.readableBytes());
 
         // update last key
-        lastKey.writerIndex(sharedKeyBytes);
-        lastKey.writeBytes(key, sharedKeyBytes, nonSharedKeyBytes);
-        assert (lastKey.equals(key));
+        // todo copy key?
+        lastKey = key;
 
         // update state
         entryCount++;
         restartBlockEntryCount++;
     }
 
-    public static int calculateSharedBytes(ChannelBuffer leftKey, ChannelBuffer rightKey)
+    public static int calculateSharedBytes(byte[] leftKey, byte[] rightKey)
     {
         int sharedKeyBytes = 0;
 
         if (leftKey != null && rightKey != null) {
-            int minSharedKeyBytes = Ints.min(leftKey.readableBytes(), rightKey.readableBytes());
-            while (sharedKeyBytes < minSharedKeyBytes && leftKey.getByte(sharedKeyBytes) == rightKey.getByte(sharedKeyBytes)) {
+            int minSharedKeyBytes = Ints.min(leftKey.length, rightKey.length);
+            while (sharedKeyBytes < minSharedKeyBytes && leftKey[sharedKeyBytes] == rightKey[sharedKeyBytes]) {
                 sharedKeyBytes++;
             }
         }

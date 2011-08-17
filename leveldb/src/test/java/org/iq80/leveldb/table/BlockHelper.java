@@ -107,34 +107,34 @@ public class BlockHelper
         return key.substring(0, key.length() - 1) + ((char) (lastByte + 1));
     }
 
-    public static ChannelBuffer before(Entry<ChannelBuffer, ?> expectedEntry)
+    public static byte[] before(Entry<byte[], ?> expectedEntry)
     {
-        ChannelBuffer channelBuffer = Buffers.copiedBuffer(expectedEntry.getKey());
-        int lastByte = channelBuffer.readableBytes() - 1;
-        channelBuffer.setByte(lastByte, channelBuffer.getByte(lastByte) - 1);
+        byte[] channelBuffer = Arrays.copyOf(expectedEntry.getKey(), expectedEntry.getKey().length);
+        int lastByte = channelBuffer.length - 1;
+        channelBuffer[lastByte] = (byte) (channelBuffer[lastByte] - 1);
         return channelBuffer;
     }
 
-    public static ChannelBuffer after(Entry<ChannelBuffer, ?> expectedEntry)
+    public static byte[] after(Entry<byte[], ?> expectedEntry)
     {
-        ChannelBuffer channelBuffer = Buffers.copiedBuffer(expectedEntry.getKey());
-        int lastByte = channelBuffer.readableBytes() - 1;
-        channelBuffer.setByte(lastByte, channelBuffer.getByte(lastByte) + 1);
+        byte[] channelBuffer = Arrays.copyOf(expectedEntry.getKey(), expectedEntry.getKey().length);
+        int lastByte = channelBuffer.length - 1;
+        channelBuffer[lastByte] = (byte) (channelBuffer[lastByte] + 1);
         return channelBuffer;
     }
 
     public static int estimateEntriesSize(int blockRestartInterval, List<BlockEntry> entries)
     {
         int size = 0;
-        ChannelBuffer previousKey = null;
+        byte[] previousKey = null;
         int restartBlockCount = 0;
         for (BlockEntry entry : entries) {
             int nonSharedBytes;
             if (restartBlockCount < blockRestartInterval) {
-                nonSharedBytes = entry.getKey().readableBytes() - BlockBuilder.calculateSharedBytes(entry.getKey(), previousKey);
+                nonSharedBytes = entry.getKey().length - BlockBuilder.calculateSharedBytes(entry.getKey(), previousKey);
             }
             else {
-                nonSharedBytes = entry.getKey().readableBytes();
+                nonSharedBytes = entry.getKey().length;
                 restartBlockCount = 0;
             }
             size += nonSharedBytes +
@@ -150,6 +150,6 @@ public class BlockHelper
 
     static BlockEntry createBlockEntry(String key, String value)
     {
-        return new BlockEntry(Buffers.copiedBuffer(key, UTF_8), Buffers.copiedBuffer(value, UTF_8));
+        return new BlockEntry(key.getBytes(UTF_8), Buffers.copiedBuffer(value, UTF_8));
     }
 }

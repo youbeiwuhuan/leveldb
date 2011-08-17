@@ -36,18 +36,18 @@ import java.util.Comparator;
 
 import static org.iq80.leveldb.table.CompressionType.SNAPPY;
 
-public class Table implements SeekingIterable<ChannelBuffer, ChannelBuffer>
+public class Table implements SeekingIterable<byte[], ChannelBuffer>
 {
     private final String name;
     private final FileChannel fileChannel;
-    private final Comparator<ChannelBuffer> comparator;
+    private final Comparator<byte[]> comparator;
 
     private final boolean verifyChecksums;
 
     private final Block indexBlock;
     private final BlockHandle metaindexBlockHandle;
 
-    public Table(String name, FileChannel fileChannel, Comparator<ChannelBuffer> comparator, boolean verifyChecksums)
+    public Table(String name, FileChannel fileChannel, Comparator<byte[]> comparator, boolean verifyChecksums)
             throws IOException
     {
         Preconditions.checkNotNull(name, "name is null");
@@ -68,9 +68,9 @@ public class Table implements SeekingIterable<ChannelBuffer, ChannelBuffer>
     }
 
     @Override
-    public SeekingIterator<ChannelBuffer, ChannelBuffer> iterator()
+    public SeekingIterator<byte[], ChannelBuffer> iterator()
     {
-        SeekingIterator<ChannelBuffer, BlockIterator> inputs = SeekingIterators.transformValues(indexBlock.iterator(), new Function<ChannelBuffer, BlockIterator>()
+        SeekingIterator<byte[], BlockIterator> inputs = SeekingIterators.transformValues(indexBlock.iterator(), new Function<ChannelBuffer, BlockIterator>()
         {
             @Override
             public BlockIterator apply(ChannelBuffer blockEntry)
@@ -132,7 +132,7 @@ public class Table implements SeekingIterable<ChannelBuffer, ChannelBuffer>
      * For example, the approximate offset of the last key in the table will
      * be close to the file length.
      */
-    public long getApproximateOffsetOf(ChannelBuffer key)
+    public long getApproximateOffsetOf(byte[] key)
     {
         BlockIterator iterator = indexBlock.iterator();
         iterator.seek(key);

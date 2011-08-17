@@ -174,7 +174,7 @@ public class VersionSet implements SeekingIterable<InternalKey, ChannelBuffer>
         return current.get(key);
     }
 
-    public boolean overlapInLevel(int level, ChannelBuffer smallestUserKey, ChannelBuffer largestUserKey)
+    public boolean overlapInLevel(int level, byte[] smallestUserKey, byte[] largestUserKey)
     {
         return current.overlapInLevel(level, smallestUserKey, largestUserKey);
     }
@@ -583,8 +583,8 @@ public class VersionSet implements SeekingIterable<InternalKey, ChannelBuffer>
     private List<FileMetaData> getOverlappingInputs(int level, InternalKey begin, InternalKey end)
     {
         ImmutableList.Builder<FileMetaData> files = ImmutableList.builder();
-        ChannelBuffer userBegin = begin.getUserKey();
-        ChannelBuffer userEnd = end.getUserKey();
+        byte[] userBegin = begin.getUserKey();
+        byte[] userEnd = end.getUserKey();
         UserComparator userComparator = internalKeyComparator.getUserComparator();
         for (FileMetaData fileMetaData : current.getFiles(level)) {
             if (userComparator.compare(fileMetaData.getLargest().getUserKey(), userBegin) < 0 ||

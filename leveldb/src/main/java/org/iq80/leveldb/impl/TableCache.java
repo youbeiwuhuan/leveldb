@@ -39,8 +39,8 @@ import java.nio.channels.FileChannel;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 
-import static org.iq80.leveldb.impl.InternalKey.CHANNEL_BUFFER_TO_INTERNAL_KEY;
-import static org.iq80.leveldb.impl.InternalKey.INTERNAL_KEY_TO_CHANNEL_BUFFER;
+import static org.iq80.leveldb.impl.InternalKey.BYTE_ARRAY_TO_INTERNAL_KEY;
+import static org.iq80.leveldb.impl.InternalKey.INTERNAL_KEY_TO_BYTE_ARRAY;
 
 public class TableCache
 {
@@ -79,10 +79,10 @@ public class TableCache
     public SeekingIterator<InternalKey, ChannelBuffer> newIterator(long number)
     {
         Table table = getTable(number);
-        return SeekingIterators.transformKeys(table.iterator(), CHANNEL_BUFFER_TO_INTERNAL_KEY, INTERNAL_KEY_TO_CHANNEL_BUFFER);
+        return SeekingIterators.transformKeys(table.iterator(), BYTE_ARRAY_TO_INTERNAL_KEY, INTERNAL_KEY_TO_BYTE_ARRAY);
     }
 
-    public long getApproximateOffsetOf(FileMetaData file, ChannelBuffer key) {
+    public long getApproximateOffsetOf(FileMetaData file, byte[] key) {
         return getTable(file.getNumber()).getApproximateOffsetOf(key);
     }
 

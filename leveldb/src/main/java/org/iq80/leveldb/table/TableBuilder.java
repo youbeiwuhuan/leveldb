@@ -27,9 +27,6 @@ import org.xerial.snappy.Snappy;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 
-import static org.iq80.leveldb.util.ChannelBufferComparator.CHANNEL_BUFFER_COMPARATOR;
-
-// todo byte order must be little endian
 public class TableBuilder
 {
     /**
@@ -46,7 +43,7 @@ public class TableBuilder
     private final FileChannel fileChannel;
     private final BlockBuilder dataBlockBuilder;
     private final BlockBuilder indexBlockBuilder;
-    private final ChannelBuffer lastKey;
+    private byte[] lastKey;
     private final UserComparator userComparator;
 
     private long entryCount;
@@ -89,7 +86,7 @@ public class TableBuilder
         dataBlockBuilder = new BlockBuilder(Buffers.dynamicBuffer(), blockRestartInterval, userComparator);
         indexBlockBuilder = new BlockBuilder(Buffers.dynamicBuffer(), 1, userComparator);
 
-        lastKey = Buffers.dynamicBuffer(128);
+        lastKey = new byte[0];
         compressedOutput = Buffers.dynamicBuffer(128);
 
     }
@@ -112,7 +109,7 @@ public class TableBuilder
         add(blockEntry.getKey(), blockEntry.getValue());
     }
 
-    public void add(ChannelBuffer key, ChannelBuffer value)
+    public void add(byte[] key, ChannelBuffer value)
             throws IOException
     {
         Preconditions.checkNotNull(key, "key is null");
@@ -128,16 +125,15 @@ public class TableBuilder
         if (pendingIndexEntry) {
             Preconditions.checkState(dataBlockBuilder.isEmpty(), "Internal error: Table has a pending index entry but data block builder is empty");
 
-            userComparator.findShortestSeparator(lastKey, key);
+            byte[] shortestSeparator = userComparator.findShortestSeparator(lastKey, key);
 
             ChannelBuffer handleEncoding = Buffers.dynamicBuffer();
             BlockHandle.writeBlockHandle(pendingHandle, handleEncoding);
-            indexBlockBuilder.add(lastKey, handleEncoding);
+            indexBlockBuilder.add(shortestSeparator, handleEncoding);
             pendingIndexEntry = false;
         }
 
-        lastKey.clear();
-        lastKey.writeBytes(key, 0, key.readableBytes());
+        lastKey = key; // todo copy?
         entryCount++;
         dataBlockBuilder.add(key, value);
 
@@ -218,17 +214,17 @@ public class TableBuilder
         closed = true;
 
         // write (empty) meta index block
-        BlockBuilder metaIndexBlockBuilder = new BlockBuilder(Buffers.dynamicBuffer(), blockRestartInterval, CHANNEL_BUFFER_COMPARATOR);
+        BlockBuilder metaIndexBlockBuilder = new BlockBuilder(Buffers.dynamicBuffer(), blockRestartInterval, new BasicUserComparator());
         // TODO(postrelease): Add stats and other meta blocks
         BlockHandle metaindexBlockHandle = writeBlock(metaIndexBlockBuilder);
 
         // add last handle to index block
         if (pendingIndexEntry) {
-            userComparator.findShortSuccessor(lastKey);
+            byte[] shortSuccessor = userComparator.findShortSuccessor(lastKey);
 
             ChannelBuffer handleEncoding = Buffers.dynamicBuffer();
             BlockHandle.writeBlockHandle(pendingHandle, handleEncoding);
-            indexBlockBuilder.add(lastKey, handleEncoding);
+            indexBlockBuilder.add(shortSuccessor, handleEncoding);
             pendingIndexEntry = false;
         }
 

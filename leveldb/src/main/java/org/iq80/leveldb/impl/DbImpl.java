@@ -65,13 +65,15 @@ import static org.iq80.leveldb.impl.InternalKey.createUserKeyToInternalKeyFuncti
 import static org.iq80.leveldb.impl.SequenceNumber.MAX_SEQUENCE_NUMBER;
 import static org.iq80.leveldb.impl.ValueType.DELETION;
 import static org.iq80.leveldb.impl.ValueType.VALUE;
+import static org.iq80.leveldb.util.Buffers.readLengthPrefixedByteArray;
 import static org.iq80.leveldb.util.Buffers.readLengthPrefixedBytes;
+import static org.iq80.leveldb.util.Buffers.writeLengthPrefixedByteArray;
 import static org.iq80.leveldb.util.Buffers.writeLengthPrefixedBytes;
 import static org.iq80.leveldb.util.SizeOf.SIZE_OF_INT;
 import static org.iq80.leveldb.util.SizeOf.SIZE_OF_LONG;
 
 // todo make thread safe and concurrent
-public class DbImpl implements SeekingIterable<ChannelBuffer, ChannelBuffer>
+public class DbImpl implements SeekingIterable<byte[], ChannelBuffer>
 {
     private final Options options;
     private final File databaseDir;
@@ -304,7 +306,7 @@ public class DbImpl implements SeekingIterable<ChannelBuffer, ChannelBuffer>
         }
     }
 
-    public void compactRange(int level, ChannelBuffer start, ChannelBuffer end)
+    public void compactRange(int level, byte[] start, byte[] end)
     {
         Preconditions.checkArgument(level >= 0, "level is negative");
         Preconditions.checkArgument(level + 1 < NUM_LEVELS, "level is greater than %s", NUM_LEVELS);
@@ -507,12 +509,12 @@ public class DbImpl implements SeekingIterable<ChannelBuffer, ChannelBuffer>
         return maxSequence;
     }
 
-    public ChannelBuffer get(ChannelBuffer key)
+    public ChannelBuffer get(byte[] key)
     {
         return get(new ReadOptions(), key);
     }
 
-    public ChannelBuffer get(ReadOptions options, ChannelBuffer key)
+    public ChannelBuffer get(ReadOptions options, byte[] key)
     {
         LookupKey lookupKey;
         mutex.lock();
@@ -551,22 +553,22 @@ public class DbImpl implements SeekingIterable<ChannelBuffer, ChannelBuffer>
         return null;
     }
 
-    public void put(ChannelBuffer key, ChannelBuffer value)
+    public void put(byte[] key, ChannelBuffer value)
     {
         put(new WriteOptions(), key, value);
     }
 
-    public void put(WriteOptions options, ChannelBuffer key, ChannelBuffer value)
+    public void put(WriteOptions options, byte[] key, ChannelBuffer value)
     {
         write(options, new WriteBatch().put(key, value));
     }
 
-    public void delete(ChannelBuffer key)
+    public void delete(byte[] key)
     {
         write(new WriteOptions(), new WriteBatch().delete(key));
     }
 
-    public void delete(WriteOptions options, ChannelBuffer key)
+    public void delete(WriteOptions options, byte[] key)
     {
         write(options, new WriteBatch().delete(key));
     }
@@ -604,12 +606,12 @@ public class DbImpl implements SeekingIterable<ChannelBuffer, ChannelBuffer>
     }
 
     @Override
-    public SeekingIterator<ChannelBuffer, ChannelBuffer> iterator()
+    public SeekingIterator<byte[], ChannelBuffer> iterator()
     {
         return iterator(new ReadOptions());
     }
 
-    public SeekingIterator<ChannelBuffer, ChannelBuffer> iterator(ReadOptions options)
+    public SeekingIterator<byte[], ChannelBuffer> iterator(ReadOptions options)
     {
         mutex.lock();
         try {
@@ -621,7 +623,7 @@ public class DbImpl implements SeekingIterable<ChannelBuffer, ChannelBuffer>
             SeekingIterator<InternalKey, ChannelBuffer> snapshotIterator = new SnapshotSeekingIterator(rawIterator, snapshot, internalKeyComparator.getUserComparator());
 
             // transform the keys user space
-            SeekingIterator<ChannelBuffer, ChannelBuffer> userIterator = SeekingIterators.transformKeys(snapshotIterator,
+            SeekingIterator<byte[], ChannelBuffer> userIterator = SeekingIterators.transformKeys(snapshotIterator,
                     INTERNAL_KEY_TO_USER_KEY,
                     createUserKeyToInternalKeyFunction(snapshot));
             return userIterator;
@@ -822,8 +824,8 @@ public class DbImpl implements SeekingIterable<ChannelBuffer, ChannelBuffer>
             mutex.lock();
         }
 
-        ChannelBuffer minUserKey = fileMetaData.getSmallest().getUserKey();
-        ChannelBuffer maxUserKey = fileMetaData.getLargest().getUserKey();
+        byte[] minUserKey = fileMetaData.getSmallest().getUserKey();
+        byte[] maxUserKey = fileMetaData.getLargest().getUserKey();
 
         int level = 0;
         if (base != null && !base.overlapInLevel(0, minUserKey, maxUserKey)) {
@@ -857,7 +859,7 @@ public class DbImpl implements SeekingIterable<ChannelBuffer, ChannelBuffer>
                 }
                 largest = key;
 
-                tableBuilder.add(key.encode(), entry.getValue());
+                tableBuilder.add(key.encodeBytes(), entry.getValue());
             }
 
             tableBuilder.finish();
@@ -899,7 +901,7 @@ public class DbImpl implements SeekingIterable<ChannelBuffer, ChannelBuffer>
         try {
             SeekingIterator<InternalKey, ChannelBuffer> iterator = versions.makeInputIterator(compactionState.compaction);
 
-            ChannelBuffer currentUserKey = null;
+            byte[] currentUserKey = null;
             boolean hasCurrentUserKey = false;
 
             long lastSequenceForKey = MAX_SEQUENCE_NUMBER;
@@ -965,7 +967,7 @@ public class DbImpl implements SeekingIterable<ChannelBuffer, ChannelBuffer>
                         compactionState.currentSmallest = key;
                     }
                     compactionState.currentLargest = key;
-                    compactionState.builder.add(key.encode(), iterator.peek().getValue());
+                    compactionState.builder.add(key.encodeBytes(), iterator.peek().getValue());
 
                     // Close output file if it is big enough
                     if (compactionState.builder.getFileSize() >=
@@ -1082,7 +1084,7 @@ public class DbImpl implements SeekingIterable<ChannelBuffer, ChannelBuffer>
         return versions.getCurrent().numberOfFilesInLevel(level);
     }
 
-    public long getApproximateSizes(ChannelBuffer start, ChannelBuffer limit)
+    public long getApproximateSizes(byte[] start, byte[] limit)
     {
         Version v = versions.getCurrent();
 
@@ -1133,10 +1135,10 @@ public class DbImpl implements SeekingIterable<ChannelBuffer, ChannelBuffer>
     private static class ManualCompaction
     {
         private final int level;
-        private final ChannelBuffer begin;
-        private final ChannelBuffer end;
+        private final byte[] begin;
+        private final byte[] end;
 
-        private ManualCompaction(int level, ChannelBuffer begin, ChannelBuffer end)
+        private ManualCompaction(int level, byte[] begin, byte[] end)
         {
             this.level = level;
             this.begin = begin;
@@ -1153,11 +1155,11 @@ public class DbImpl implements SeekingIterable<ChannelBuffer, ChannelBuffer>
             entries++;
             ValueType valueType = ValueType.getValueTypeByPersistentId(record.readByte());
             if (valueType == VALUE) {
-                ChannelBuffer key = readLengthPrefixedBytes(record);
+                byte[] key = readLengthPrefixedByteArray(record);
                 ChannelBuffer value = readLengthPrefixedBytes(record);
                 writeBatch.put(key, value);
             } else if (valueType == DELETION) {
-                ChannelBuffer key = readLengthPrefixedBytes(record);
+                byte[] key = readLengthPrefixedByteArray(record);
                 writeBatch.delete(key);
             } else {
                 throw new IllegalStateException("Unexpected value type " + valueType);
@@ -1179,18 +1181,18 @@ public class DbImpl implements SeekingIterable<ChannelBuffer, ChannelBuffer>
         updates.forEach(new Handler()
         {
             @Override
-            public void put(ChannelBuffer key, ChannelBuffer value)
+            public void put(byte[] key, ChannelBuffer value)
             {
                 record.writeByte(VALUE.getPersistentId());
-                writeLengthPrefixedBytes(record, key.duplicate());
+                writeLengthPrefixedByteArray(record, key);
                 writeLengthPrefixedBytes(record, value.duplicate());
             }
 
             @Override
-            public void delete(ChannelBuffer key)
+            public void delete(byte[] key)
             {
                 record.writeByte(DELETION.getPersistentId());
-                writeLengthPrefixedBytes(record, key.duplicate());
+                writeLengthPrefixedByteArray(record, key);
             }
         });
         return record;
@@ -1208,13 +1210,13 @@ public class DbImpl implements SeekingIterable<ChannelBuffer, ChannelBuffer>
         }
 
         @Override
-        public void put(ChannelBuffer key, ChannelBuffer value)
+        public void put(byte[] key, ChannelBuffer value)
         {
             memTable.add(sequence++, VALUE, key, value);
         }
 
         @Override
-        public void delete(ChannelBuffer key)
+        public void delete(byte[] key)
         {
             memTable.add(sequence++, DELETION, key, Buffers.EMPTY_BUFFER);
         }

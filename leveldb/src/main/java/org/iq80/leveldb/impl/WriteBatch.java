@@ -28,7 +28,7 @@ import static com.google.common.collect.Lists.newArrayList;
 
 public class WriteBatch
 {
-    private List<Entry<ChannelBuffer, ChannelBuffer>> batch = newArrayList();
+    private List<Entry<byte[], ChannelBuffer>> batch = newArrayList();
     private int approximateSize;
 
     public int getApproximateSize()
@@ -41,26 +41,26 @@ public class WriteBatch
         return batch.size();
     }
 
-    public WriteBatch put(ChannelBuffer key, ChannelBuffer value)
+    public WriteBatch put(byte[] key, ChannelBuffer value)
     {
         Preconditions.checkNotNull(key, "key is null");
         Preconditions.checkNotNull(value, "value is null");
         batch.add(Maps.immutableEntry(key, value));
-        approximateSize += 12 + key.readableBytes() + value.readableBytes();
+        approximateSize += 12 + key.length + value.readableBytes();
         return this;
     }
 
-    public WriteBatch delete(ChannelBuffer key)
+    public WriteBatch delete(byte[] key)
     {
         Preconditions.checkNotNull(key, "key is null");
         batch.add(Maps.immutableEntry(key, (ChannelBuffer) null));
-        approximateSize += 6 + key.readableBytes();
+        approximateSize += 6 + key.length;
         return this;
     }
 
     public void forEach(Handler handler) {
-        for (Entry<ChannelBuffer, ChannelBuffer> entry : batch) {
-            ChannelBuffer key = entry.getKey();
+        for (Entry<byte[], ChannelBuffer> entry : batch) {
+            byte[] key = entry.getKey();
             ChannelBuffer value = entry.getValue();
             if (value != null) {
                 handler.put(key, value);
@@ -72,9 +72,9 @@ public class WriteBatch
 
     public static interface  Handler {
 
-        void put(ChannelBuffer key, ChannelBuffer value);
+        void put(byte[] key, ChannelBuffer value);
 
-        void delete(ChannelBuffer key);
+        void delete(byte[] key);
     }
 
 }

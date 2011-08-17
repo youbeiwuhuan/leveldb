@@ -33,47 +33,26 @@ public class LookupKey
     // The array is a suitable MemTable key.
     // The suffix starting with "userkey" can be used as an InternalKey.
 
-    private final ChannelBuffer key;
-    private final int keyStart;
+    private final InternalKey key;
 
-    public LookupKey(ChannelBuffer user_key, long sequenceNumber)
+    public LookupKey(byte[] userKey, long sequenceNumber)
     {
-        // A conservative estimate of the key length
-        // todo add function to calculate exact size of packed int
-        key = Buffers.buffer(user_key.readableBytes() + 13);
-
-        // write length
-        VariableLengthQuantity.packInt(user_key.readableBytes() + 8, key);
-        keyStart = key.readableBytes();
-
-        // write bytes
-        key.writeBytes(user_key, 0, user_key.readableBytes());
-
-        // write sequence number
-        key.writeLong(SequenceNumber.packSequenceAndValueType(sequenceNumber, ValueType.VALUE));
-    }
-
-    public ChannelBuffer getMemtableKey()
-    {
-        // full key
-        return key.duplicate();
+        key = new InternalKey(userKey, sequenceNumber, ValueType.VALUE);
     }
 
     public InternalKey getInternalKey()
     {
-        // user key + tag
-        return new InternalKey(key.slice(keyStart, key.readableBytes() - keyStart));
+        return key;
     }
 
-    public ChannelBuffer getUserKey()
+    public byte[] getUserKey()
     {
-        // just user key part -- no key length and no tag
-        return key.slice(keyStart, key.readableBytes() - keyStart - SIZE_OF_LONG);
+        return key.getUserKey();
     }
 
     @Override
     public String toString()
     {
-        return getInternalKey().toString();
+        return key.toString();
     }
 }

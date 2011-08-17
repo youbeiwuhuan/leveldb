@@ -22,22 +22,24 @@ import com.google.common.base.Preconditions;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.iq80.leveldb.util.Buffers;
 
+import java.util.Arrays;
+
 import static com.google.common.base.Charsets.UTF_8;
 import static org.iq80.leveldb.util.SizeOf.SIZE_OF_LONG;
 
 public class InternalKey
 {
-    private final ChannelBuffer userKey;
+    private final byte[] userKey;
     private final long sequenceNumber;
     private final ValueType valueType;
 
-    public InternalKey(ChannelBuffer userKey, long sequenceNumber, ValueType valueType)
+    public InternalKey(byte[] userKey, long sequenceNumber, ValueType valueType)
     {
         Preconditions.checkNotNull(userKey, "userKey is null");
         Preconditions.checkArgument(sequenceNumber >= 0, "sequenceNumber is negative");
         Preconditions.checkNotNull(valueType, "valueType is null");
 
-        this.userKey = userKey.duplicate();
+        this.userKey = userKey;
         this.sequenceNumber = sequenceNumber;
         this.valueType = valueType;
     }
@@ -53,7 +55,7 @@ public class InternalKey
         this.valueType = getValueType(data);
     }
 
-    public ChannelBuffer getUserKey()
+    public byte[] getUserKey()
     {
         return userKey;
     }
@@ -70,10 +72,14 @@ public class InternalKey
 
     public ChannelBuffer encode()
     {
-        ChannelBuffer buffer = Buffers.buffer(userKey.readableBytes() + SIZE_OF_LONG);
-        buffer.writeBytes(userKey.slice());
+        ChannelBuffer buffer = Buffers.buffer(userKey.length + SIZE_OF_LONG);
+        buffer.writeBytes(userKey);
         buffer.writeLong(SequenceNumber.packSequenceAndValueType(sequenceNumber, valueType));
         return buffer;
+    }
+
+    public byte[] encodeBytes() {
+        return encode().array();
     }
 
     @Override
@@ -91,7 +97,7 @@ public class InternalKey
         if (sequenceNumber != that.sequenceNumber) {
             return false;
         }
-        if (userKey != null ? !userKey.equals(that.userKey) : that.userKey != null) {
+        if (userKey != null ? !Arrays.equals(userKey, that.userKey) : that.userKey != null) {
             return false;
         }
         if (valueType != that.valueType) {
@@ -106,7 +112,7 @@ public class InternalKey
     public int hashCode()
     {
         if (hash == 0) {
-            int result = userKey != null ? userKey.hashCode() : 0;
+            int result = userKey != null ? Arrays.hashCode(userKey) : 0;
             result = 31 * result + (int) (sequenceNumber ^ (sequenceNumber >>> 32));
             result = 31 * result + (valueType != null ? valueType.hashCode() : 0);
             if (result == 0) {
@@ -122,7 +128,7 @@ public class InternalKey
     {
         final StringBuilder sb = new StringBuilder();
         sb.append("InternalKey");
-        sb.append("{key=").append(getUserKey().toString(UTF_8));      // todo don't print the real value
+        sb.append("{key=").append(new String(getUserKey(), UTF_8));      // todo don't print the real value
         sb.append(", sequenceNumber=").append(getSequenceNumber());
         sb.append(", valueType=").append(getValueType());
         sb.append('}');
@@ -131,46 +137,46 @@ public class InternalKey
 
     // todo find new home for these
 
-    public static final Function<InternalKey, ChannelBuffer> INTERNAL_KEY_TO_CHANNEL_BUFFER = new InternalKeyToChannelBufferFunction();
+    public static final Function<InternalKey, byte[]> INTERNAL_KEY_TO_BYTE_ARRAY = new InternalKeyToByteArrayFunction();
 
-    public static final Function<ChannelBuffer, InternalKey> CHANNEL_BUFFER_TO_INTERNAL_KEY = new ChannelBufferToInternalKeyFunction();
+    public static final Function<byte[], InternalKey> BYTE_ARRAY_TO_INTERNAL_KEY = new ByteArrayToInternalKeyFunction();
 
-    public static final Function<InternalKey, ChannelBuffer> INTERNAL_KEY_TO_USER_KEY = new InternalKeyToUserKeyFunction();
+    public static final Function<InternalKey, byte[]> INTERNAL_KEY_TO_USER_KEY = new InternalKeyToUserKeyFunction();
 
-    public static Function<ChannelBuffer, InternalKey> createUserKeyToInternalKeyFunction(final long sequenceNumber)
+    public static Function<byte[], InternalKey> createUserKeyToInternalKeyFunction(final long sequenceNumber)
     {
         return new UserKeyInternalKeyFunction(sequenceNumber);
     }
 
 
-    private static class InternalKeyToChannelBufferFunction implements Function<InternalKey, ChannelBuffer>
+    private static class InternalKeyToByteArrayFunction implements Function<InternalKey, byte[]>
     {
         @Override
-        public ChannelBuffer apply(InternalKey internalKey)
+        public byte[] apply(InternalKey internalKey)
         {
-            return internalKey.encode();
+            return internalKey.encodeBytes();
         }
     }
 
-    private static class InternalKeyToUserKeyFunction implements Function<InternalKey, ChannelBuffer>
+    private static class InternalKeyToUserKeyFunction implements Function<InternalKey, byte[]>
     {
         @Override
-        public ChannelBuffer apply(InternalKey internalKey)
+        public byte[] apply(InternalKey internalKey)
         {
             return internalKey.getUserKey();
         }
     }
 
-    private static class ChannelBufferToInternalKeyFunction implements Function<ChannelBuffer, InternalKey>
+    private static class ByteArrayToInternalKeyFunction implements Function<byte[], InternalKey>
     {
         @Override
-        public InternalKey apply(ChannelBuffer channelBuffer)
+        public InternalKey apply(byte[] channelBuffer)
         {
-            return new InternalKey(channelBuffer);
+            return new InternalKey(Buffers.wrappedBuffer(channelBuffer));
         }
     }
 
-    private static class UserKeyInternalKeyFunction implements Function<ChannelBuffer, InternalKey>
+    private static class UserKeyInternalKeyFunction implements Function<byte[], InternalKey>
     {
         private final long sequenceNumber;
 
@@ -180,18 +186,18 @@ public class InternalKey
         }
 
         @Override
-        public InternalKey apply(ChannelBuffer channelBuffer)
+        public InternalKey apply(byte[] key)
         {
-            return new InternalKey(channelBuffer, sequenceNumber, ValueType.VALUE);
+            return new InternalKey(key, sequenceNumber, ValueType.VALUE);
         }
     }
 
 
-    private static ChannelBuffer getUserKey(ChannelBuffer data)
+    private static byte[] getUserKey(ChannelBuffer data)
     {
-        ChannelBuffer buffer = data.duplicate();
-        buffer.writerIndex(data.readableBytes() - SIZE_OF_LONG);
-        return buffer;
+        byte[] userKey = new byte[data.readableBytes() - SIZE_OF_LONG];
+        data.getBytes(data.readerIndex(), userKey);
+        return userKey;
     }
 
     private static long getSequenceNumber(ChannelBuffer data)

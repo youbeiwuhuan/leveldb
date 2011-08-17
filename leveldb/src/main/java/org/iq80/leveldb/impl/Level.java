@@ -17,6 +17,7 @@
  */
 package org.iq80.leveldb.impl;
 
+import com.google.common.base.Charsets;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -29,12 +30,14 @@ import org.iq80.leveldb.table.UserComparator;
 import org.iq80.leveldb.util.SeekingIterators;
 import org.jboss.netty.buffer.ChannelBuffer;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 
+import static com.google.common.base.Charsets.UTF_8;
 import static com.google.common.collect.Lists.newArrayList;
 import static org.iq80.leveldb.impl.FileMetaData.GET_LARGEST_USER_KEY;
 import static org.iq80.leveldb.impl.SequenceNumber.MAX_SEQUENCE_NUMBER;
@@ -153,10 +156,10 @@ public class Level implements SeekingIterable<InternalKey, ChannelBuffer>
             // parse the key in the block
             Entry<InternalKey, ChannelBuffer> entry = iterator.next();
             InternalKey internalKey = entry.getKey();
-            Preconditions.checkState(internalKey != null, "Corrupt key for %s", key.getUserKey());
+            Preconditions.checkState(internalKey != null, "Corrupt key for %s", new String(key.getUserKey(), UTF_8));
 
             // if this is a value key (not a delete) and the keys match, return the value
-            if (key.getUserKey().equals(internalKey.getUserKey())) {
+            if (Arrays.equals(key.getUserKey(), internalKey.getUserKey())) {
                 if (internalKey.getValueType() == ValueType.DELETION) {
                     return LookupResult.deleted(key);
                 }
@@ -184,7 +187,7 @@ public class Level implements SeekingIterable<InternalKey, ChannelBuffer>
         return insertionPoint;
     }
 
-    public boolean someFileOverlapsRange(ChannelBuffer smallestUserKey, ChannelBuffer largestUserKey)
+    public boolean someFileOverlapsRange(byte[] smallestUserKey, byte[] largestUserKey)
     {
         InternalKey smallestInternalKey = new InternalKey(smallestUserKey, MAX_SEQUENCE_NUMBER, VALUE);
         int index = findFile(smallestInternalKey);

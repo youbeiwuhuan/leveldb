@@ -24,6 +24,7 @@ import org.iq80.leveldb.SeekingIterable;
 import org.iq80.leveldb.SeekingIterator;
 import org.jboss.netty.buffer.ChannelBuffer;
 
+import java.util.Arrays;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -50,7 +51,7 @@ public class MemTable implements SeekingIterable<InternalKey, ChannelBuffer>
         return approximateMemoryUsage.get();
     }
 
-    public void add(long sequenceNumber, ValueType valueType, ChannelBuffer key, ChannelBuffer value)
+    public void add(long sequenceNumber, ValueType valueType, byte[] key, ChannelBuffer value)
     {
         Preconditions.checkNotNull(valueType, "valueType is null");
         Preconditions.checkNotNull(key, "key is null");
@@ -59,7 +60,7 @@ public class MemTable implements SeekingIterable<InternalKey, ChannelBuffer>
         InternalKey internalKey = new InternalKey(key, sequenceNumber, valueType);
         table.put(internalKey, value);
 
-        approximateMemoryUsage.addAndGet(key.readableBytes() + SIZE_OF_LONG + value.readableBytes());
+        approximateMemoryUsage.addAndGet(key.length + SIZE_OF_LONG + value.readableBytes());
     }
 
     public LookupResult get(LookupKey key)
@@ -76,7 +77,7 @@ public class MemTable implements SeekingIterable<InternalKey, ChannelBuffer>
             return LookupResult.deleted(key);
         }
 
-        if (entry.getKey().getUserKey().equals(key.getUserKey())) {
+        if (Arrays.equals(entry.getKey().getUserKey(), key.getUserKey())) {
             return LookupResult.ok(key, entry.getValue());
         }
         return null;

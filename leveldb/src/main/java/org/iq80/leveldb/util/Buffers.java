@@ -35,6 +35,20 @@ public final class Buffers
     {
     }
 
+    public static byte[] readLengthPrefixedByteArray(ChannelBuffer buffer)
+    {
+        int length = VariableLengthQuantity.unpackInt(buffer);
+        byte[] result = new byte[length];
+        buffer.readBytes(result);
+        return result;
+    }
+
+    public static void writeLengthPrefixedByteArray(ChannelBuffer buffer, byte[] value)
+    {
+        VariableLengthQuantity.packInt(value.length, buffer);
+        buffer.writeBytes(value);
+    }
+
     public static ChannelBuffer readLengthPrefixedBytes(ChannelBuffer buffer)
     {
         int length = VariableLengthQuantity.unpackInt(buffer);

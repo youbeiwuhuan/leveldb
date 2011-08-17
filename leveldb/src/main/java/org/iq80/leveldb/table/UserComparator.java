@@ -22,9 +22,9 @@ import org.jboss.netty.buffer.ChannelBuffer;
 import java.util.Comparator;
 
 // todo this interface needs more thought
-public interface UserComparator extends Comparator<ChannelBuffer>
+public interface UserComparator extends Comparator<byte[]>
 {
-    void findShortestSeparator(ChannelBuffer start, ChannelBuffer limit);
+    byte[] findShortestSeparator(byte[] start, byte[] limit);
 
-    void findShortSuccessor(ChannelBuffer key);
+    byte[] findShortSuccessor(byte[] key);
 }

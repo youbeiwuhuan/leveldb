@@ -357,29 +357,28 @@ public class DbBenchmark
             WriteBatch batch = new WriteBatch();
             for (int j = 0; j < entries_per_batch; j++) {
                 int k = (order == SEQUENTIAL) ? i + j : rand_.nextInt(num_);
-                ChannelBuffer key = formatNumber(k);
+                byte[] key = formatNumber(k);
                 batch.put(key, gen_.generate(valueSize));
-                bytes_ += valueSize + key.readableBytes();
+                bytes_ += valueSize + key.length;
                 finishedSingleOp();
             }
             db_.write(writeOptions, batch);
         }
     }
 
-    public static ChannelBuffer formatNumber(long n)
+    public static byte[] formatNumber(long n)
     {
         Preconditions.checkArgument(n >= 0, "number must be positive");
 
-        ChannelBuffer buffer = Buffers.buffer(16);
-        buffer.writerIndex(16);
+        byte[] buffer = new byte[16];
 
         int i = 15;
         while (n > 0) {
-            buffer.setByte(i--, (int) ('0' + (n % 10)));
+            buffer[i--] = (byte) ('0' + (n % 10));
             n /= 10;
         }
         while (i >= 0) {
-            buffer.setByte(i--, '0');
+            buffer[i--] = '0';
         }
 
         return buffer;

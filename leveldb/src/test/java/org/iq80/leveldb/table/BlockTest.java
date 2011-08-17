@@ -17,7 +17,6 @@
  */
 package org.iq80.leveldb.table;
 
-import org.iq80.leveldb.util.ChannelBufferComparator;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.iq80.leveldb.util.Buffers;
 import org.testng.annotations.Test;
@@ -27,7 +26,6 @@ import java.util.Collections;
 import java.util.List;
 
 import static java.util.Arrays.asList;
-import static org.iq80.leveldb.util.ChannelBufferComparator.CHANNEL_BUFFER_COMPARATOR;
 import static org.testng.Assert.assertEquals;
 
 public class BlockTest
@@ -36,7 +34,7 @@ public class BlockTest
     public void testEmptyBuffer()
             throws Exception
     {
-        new Block(Buffers.EMPTY_BUFFER, CHANNEL_BUFFER_COMPARATOR);
+        new Block(Buffers.EMPTY_BUFFER, new BasicUserComparator());
     }
 
     @Test
@@ -113,7 +111,7 @@ public class BlockTest
 
     private void blockTest(int blockRestartInterval, List<BlockEntry> entries)
     {
-        BlockBuilder builder = new BlockBuilder(Buffers.dynamicBuffer(), blockRestartInterval, CHANNEL_BUFFER_COMPARATOR);
+        BlockBuilder builder = new BlockBuilder(Buffers.dynamicBuffer(), blockRestartInterval, new BasicUserComparator());
 
         for (BlockEntry entry : entries) {
             builder.add(entry);
@@ -123,7 +121,7 @@ public class BlockTest
         ChannelBuffer blockBuffer = builder.finish();
         assertEquals(builder.currentSizeEstimate(), BlockHelper.estimateBlockSize(blockRestartInterval, entries));
 
-        Block block = new Block(blockBuffer, ChannelBufferComparator.CHANNEL_BUFFER_COMPARATOR);
+        Block block = new Block(blockBuffer, new BasicUserComparator());
         assertEquals(block.size(), BlockHelper.estimateBlockSize(blockRestartInterval, entries));
 
         BlockIterator blockIterator = block.iterator();
@@ -144,7 +142,7 @@ public class BlockTest
             BlockHelper.assertSequence(blockIterator, nextEntries.subList(1, nextEntries.size()));
         }
 
-        blockIterator.seek(Buffers.wrappedBuffer(new byte[]{(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF}));
+        blockIterator.seek(new byte[]{(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF});
         BlockHelper.assertSequence(blockIterator, Collections.<BlockEntry>emptyList());
 
     }

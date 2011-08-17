@@ -22,6 +22,8 @@ import org.iq80.leveldb.table.UserComparator;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.iq80.leveldb.util.Buffers;
 
+import java.nio.Buffer;
+
 import static org.iq80.leveldb.impl.SequenceNumber.MAX_SEQUENCE_NUMBER;
 
 public class InternalUserComparator implements UserComparator
@@ -34,57 +36,49 @@ public class InternalUserComparator implements UserComparator
     }
 
     @Override
-    public int compare(ChannelBuffer left, ChannelBuffer right)
+    public int compare(byte[] left, byte[] right)
     {
-        return internalKeyComparator.compare(new InternalKey(left), new InternalKey(right));
+        return internalKeyComparator.compare(new InternalKey(Buffers.wrappedBuffer(left)), new InternalKey(Buffers.wrappedBuffer(right)));
     }
 
     @Override
-    public void findShortestSeparator(
-            ChannelBuffer start,
-            ChannelBuffer limit)
+    public byte[] findShortestSeparator(
+            byte[] start,
+            byte[] limit)
     {
         // Attempt to shorten the user portion of the key
-        ChannelBuffer startUserKey = new InternalKey(start).getUserKey();
-        ChannelBuffer limitUserKey = new InternalKey(limit).getUserKey();
+        byte[] startUserKey = new InternalKey(Buffers.wrappedBuffer(start)).getUserKey();
+        byte[] limitUserKey = new InternalKey(Buffers.wrappedBuffer(limit)).getUserKey();
 
-        ChannelBuffer tmp = Buffers.directBuffer(startUserKey.readableBytes());
-        tmp.writeBytes(startUserKey.duplicate());
+        byte[] shortestSeparator = internalKeyComparator.getUserComparator().findShortestSeparator(startUserKey, limitUserKey);
 
-        internalKeyComparator.getUserComparator().findShortestSeparator(tmp, limitUserKey);
-
-        if (internalKeyComparator.getUserComparator().compare(startUserKey, tmp) < 0) {
+        if (internalKeyComparator.getUserComparator().compare(startUserKey, shortestSeparator) < 0) {
             // User key has become larger.  Tack on the earliest possible
             // number to the shortened user key.
-            InternalKey newInternalKey = new InternalKey(tmp, MAX_SEQUENCE_NUMBER, ValueType.VALUE);
-            Preconditions.checkState(compare(start, newInternalKey.encode()) < 0);// todo
-            Preconditions.checkState(compare(newInternalKey.encode(), limit) < 0);// todo
+            InternalKey newInternalKey = new InternalKey(shortestSeparator, MAX_SEQUENCE_NUMBER, ValueType.VALUE);
+//            Preconditions.checkState(compare(start, newInternalKey.encode()) < 0);// todo
+//            Preconditions.checkState(compare(newInternalKey.encode(), limit) < 0);// todo
 
-            // todo it is assumed that start is a dynamic channel buffer and temp space
-            start.clear();
-            start.writeBytes(newInternalKey.encode());
+            return newInternalKey.encodeBytes();
         }
+        return start;
     }
 
     @Override
-    public void findShortSuccessor(ChannelBuffer key)
+    public byte[] findShortSuccessor(byte[] key)
     {
-        ChannelBuffer userKey = new InternalKey(key).getUserKey();
+        byte[] userKey = new InternalKey(Buffers.wrappedBuffer(key)).getUserKey();
 
-        ChannelBuffer tmp = Buffers.directBuffer(userKey.readableBytes());
-        tmp.writeBytes(userKey.duplicate());
+        byte[] shortSuccessor = internalKeyComparator.getUserComparator().findShortSuccessor(userKey);
 
-        internalKeyComparator.getUserComparator().findShortSuccessor(tmp.slice());
-
-        if (internalKeyComparator.getUserComparator().compare(userKey, tmp) < 0) {
+        if (internalKeyComparator.getUserComparator().compare(userKey, shortSuccessor) < 0) {
             // User key has become larger.  Tack on the earliest possible
             // number to the shortened user key.
-            InternalKey newInternalKey = new InternalKey(tmp, MAX_SEQUENCE_NUMBER, ValueType.VALUE);
-            Preconditions.checkState(compare(key, newInternalKey.encode()) < 0);// todo
+            InternalKey newInternalKey = new InternalKey(shortSuccessor, MAX_SEQUENCE_NUMBER, ValueType.VALUE);
+//            Preconditions.checkState(compare(key, newInternalKey.encode()) < 0);// todo
 
-            // todo it is assumed that key is a dynamic channel buffer and temp space
-            key.clear();
-            key.writeBytes(newInternalKey.encode());
+            return newInternalKey.encodeBytes();
         }
+        return key;
     }
 }

@@ -25,11 +25,11 @@ import java.util.Map.Entry;
 
 public class SnapshotSeekingIterator implements SeekingIterator<InternalKey, ChannelBuffer>
 {
-    private final Comparator<ChannelBuffer> userComparator;
+    private final Comparator<byte[]> userComparator;
     private final SeekingIterator<InternalKey, ChannelBuffer> iterator;
     private final long snapshot;
 
-    public SnapshotSeekingIterator(SeekingIterator<InternalKey, ChannelBuffer> iterator, long snapshot, Comparator<ChannelBuffer> userComparator)
+    public SnapshotSeekingIterator(SeekingIterator<InternalKey, ChannelBuffer> iterator, long snapshot, Comparator<byte[]> userComparator)
     {
         this.iterator = iterator;
         this.snapshot = snapshot;
@@ -79,7 +79,7 @@ public class SnapshotSeekingIterator implements SeekingIterator<InternalKey, Cha
         throw new UnsupportedOperationException();
     }
 
-    private void findNextUserEntry(ChannelBuffer deletedKey)
+    private void findNextUserEntry(byte[] deletedKey)
     {
         // if there are no more entries, we are done
         if (!iterator.hasNext()) {

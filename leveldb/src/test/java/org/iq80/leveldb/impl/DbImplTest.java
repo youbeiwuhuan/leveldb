@@ -872,7 +872,7 @@ public class DbImplTest
 
         public String get(String key)
         {
-            ChannelBuffer channelBuffer = db.get(toChannelBuffer(key));
+            ChannelBuffer channelBuffer = db.get(key.getBytes(UTF_8));
             if (channelBuffer == null) {
                 return null;
             }
@@ -881,7 +881,7 @@ public class DbImplTest
 
         public String get(String key, Snapshot snapshot)
         {
-            ChannelBuffer channelBuffer = db.get(new ReadOptions().setSnapshot(snapshot), toChannelBuffer(key));
+            ChannelBuffer channelBuffer = db.get(new ReadOptions().setSnapshot(snapshot), key.getBytes(UTF_8));
             if (channelBuffer == null) {
                 return null;
             }
@@ -890,17 +890,17 @@ public class DbImplTest
 
         public void put(String key, String value)
         {
-            db.put(toChannelBuffer(key), toChannelBuffer(value));
+            db.put(key.getBytes(UTF_8), toChannelBuffer(value));
         }
 
         public void delete(String key)
         {
-            db.delete(toChannelBuffer(key));
+            db.delete(key.getBytes(UTF_8));
         }
 
         public SeekingIterator<String, String> iterator()
         {
-            return transformValues(transformKeys(db.iterator(), new ChannelBufferToString(), new StringToChannelBuffer()), new ChannelBufferToString());
+            return transformValues(transformKeys(db.iterator(), new ByteArrayToString(), new StringToByteArray()), new ChannelBufferToString());
         }
 
         public Snapshot getSnapshot()
@@ -920,7 +920,7 @@ public class DbImplTest
 
         public void compactRange(int level, String start, String limit)
         {
-            db.compactRange(level, toChannelBuffer(start), toChannelBuffer(limit));
+            db.compactRange(level, start.getBytes(UTF_8), limit.getBytes(UTF_8));
         }
 
         public void compact(String start, String limit)
@@ -933,7 +933,7 @@ public class DbImplTest
                 }
             }
             for (int level = 0; level < maxLevelWithFiles; level++) {
-                db.compactRange(level, toChannelBuffer(""), toChannelBuffer("~"));
+                db.compactRange(level, new byte[0], new byte[]{'~'});
             }
 
         }
@@ -954,7 +954,7 @@ public class DbImplTest
 
         public long size(String start, String limit)
         {
-            return db.getApproximateSizes(toChannelBuffer(start), toChannelBuffer(limit));
+            return db.getApproximateSizes(start.getBytes(UTF_8), limit.getBytes(UTF_8));
         }
 
         public long getMaxNextLevelOverlappingBytes()
@@ -984,12 +984,21 @@ public class DbImplTest
             }
         }
 
-        private static class StringToChannelBuffer implements Function<String, ChannelBuffer>
+        private static class ByteArrayToString implements Function<byte[], String>
         {
             @Override
-            public ChannelBuffer apply(String input)
+            public String apply(byte[] input)
             {
-                return toChannelBuffer(input);
+                return new String(input, UTF_8);
+            }
+        }
+
+        private static class StringToByteArray implements Function<String, byte[]>
+        {
+            @Override
+            public byte[] apply(String input)
+            {
+                return input.getBytes(UTF_8);
             }
         }
 
@@ -997,7 +1006,7 @@ public class DbImplTest
         {
             ImmutableList.Builder<String> result = ImmutableList.builder();
             for (Entry<InternalKey, ChannelBuffer> entry : db.internalIterable()) {
-                String entryKey = entry.getKey().getUserKey().toString(UTF_8);
+                String entryKey = new String(entry.getKey().getUserKey(), UTF_8);
                 if (entryKey.equals(userKey)) {
                     if (entry.getKey().getValueType() == ValueType.VALUE) {
                         result.add(entry.getValue().toString(UTF_8));

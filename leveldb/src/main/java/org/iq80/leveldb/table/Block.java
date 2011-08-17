@@ -60,15 +60,15 @@ import static org.iq80.leveldb.util.SizeOf.SIZE_OF_INT;
  * </tbody>
  * </table>
  */
-public class Block implements SeekingIterable<ChannelBuffer, ChannelBuffer>
+public class Block implements SeekingIterable<byte[], ChannelBuffer>
 {
     private final ChannelBuffer block;
-    private final Comparator<ChannelBuffer> comparator;
+    private final Comparator<byte[]> comparator;
 
     private final ChannelBuffer data;
     private final ChannelBuffer restartPositions;
 
-    public Block(ChannelBuffer block, Comparator<ChannelBuffer> comparator)
+    public Block(ChannelBuffer block, Comparator<byte[]> comparator)
     {
         Preconditions.checkNotNull(block, "block is null");
         Preconditions.checkArgument(block.capacity() >= SIZE_OF_INT, "Block is corrupt: size must be at least %s block", SIZE_OF_INT);

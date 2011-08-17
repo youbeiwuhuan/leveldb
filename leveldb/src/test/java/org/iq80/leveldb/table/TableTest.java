@@ -48,7 +48,7 @@ public class TableTest
     public void testEmptyFile()
             throws Exception
     {
-        new Table(file.getAbsolutePath(), fileChannel, CHANNEL_BUFFER_COMPARATOR, true);
+        new Table(file.getAbsolutePath(), fileChannel, new BasicUserComparator(), true);
     }
 
     @Test
@@ -121,9 +121,9 @@ public class TableTest
         }
         builder.finish();
 
-        Table table = new Table(file.getAbsolutePath(), fileChannel, CHANNEL_BUFFER_COMPARATOR, true);
+        Table table = new Table(file.getAbsolutePath(), fileChannel, new BasicUserComparator(), true);
 
-        SeekingIterator<ChannelBuffer, ChannelBuffer> seekingIterator = table.iterator();
+        SeekingIterator<byte[], ChannelBuffer> seekingIterator = table.iterator();
         BlockHelper.assertSequence(seekingIterator, entries);
 
         seekingIterator.seekToFirst();
@@ -146,7 +146,7 @@ public class TableTest
             lastApproximateOffset = approximateOffset;
         }
 
-        ChannelBuffer endKey = Buffers.wrappedBuffer(new byte[]{(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF});
+        byte[] endKey = new byte[]{(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF};
         seekingIterator.seek(endKey);
         BlockHelper.assertSequence(seekingIterator, Collections.<BlockEntry>emptyList());
 

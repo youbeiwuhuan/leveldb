@@ -21,23 +21,22 @@ import com.google.common.base.Preconditions;
 import org.iq80.leveldb.SeekingIterator;
 import org.iq80.leveldb.util.VariableLengthQuantity;
 import org.jboss.netty.buffer.ChannelBuffer;
-import org.iq80.leveldb.util.Buffers;
 
 import java.util.Comparator;
 import java.util.NoSuchElementException;
 
 import static org.iq80.leveldb.util.SizeOf.SIZE_OF_INT;
 
-public class BlockIterator implements SeekingIterator<ChannelBuffer, ChannelBuffer>
+public class BlockIterator implements SeekingIterator<byte[], ChannelBuffer>
 {
     private final ChannelBuffer data;
     private final ChannelBuffer restartPositions;
     private final int restartCount;
-    private final Comparator<ChannelBuffer> comparator;
+    private final Comparator<byte[]> comparator;
 
     private BlockEntry nextEntry;
 
-    public BlockIterator(ChannelBuffer data, ChannelBuffer restartPositions, Comparator<ChannelBuffer> comparator)
+    public BlockIterator(ChannelBuffer data, ChannelBuffer restartPositions, Comparator<byte[]> comparator)
     {
         Preconditions.checkNotNull(data, "data is null");
         Preconditions.checkNotNull(restartPositions, "restartPositions is null");
@@ -110,7 +109,7 @@ public class BlockIterator implements SeekingIterator<ChannelBuffer, ChannelBuff
      * Repositions the iterator so the key of the next BlockElement returned greater than or equal to the specified targetKey.
      */
     @Override
-    public void seek(ChannelBuffer targetKey)
+    public void seek(byte[] targetKey)
     {
         if (restartCount == 0) {
             return;
@@ -183,12 +182,12 @@ public class BlockIterator implements SeekingIterator<ChannelBuffer, ChannelBuff
         int valueLength = VariableLengthQuantity.unpackInt(data);
 
         // read key
-        ChannelBuffer key = Buffers.buffer(sharedKeyLength + nonSharedKeyLength);
+        byte[] key = new byte[sharedKeyLength + nonSharedKeyLength];
         if (sharedKeyLength > 0) {
             Preconditions.checkState(previousEntry != null, "Entry has a shared key but no previous entry was provided");
-            key.writeBytes(previousEntry.getKey(), 0, sharedKeyLength);
+            System.arraycopy(previousEntry.getKey(), 0, key, 0, sharedKeyLength);
         }
-        key.writeBytes(data, nonSharedKeyLength);
+        data.readBytes(key, sharedKeyLength, nonSharedKeyLength);
 
         // read value
         ChannelBuffer value = data.readSlice(valueLength);

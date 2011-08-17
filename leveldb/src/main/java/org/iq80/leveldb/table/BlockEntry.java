@@ -21,6 +21,7 @@ import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import org.jboss.netty.buffer.ChannelBuffer;
 
+import java.util.Arrays;
 import java.util.Map.Entry;
 
 import static com.google.common.base.Charsets.UTF_8;
@@ -71,21 +72,21 @@ import static com.google.common.base.Charsets.UTF_8;
  * </tbody>
  * </table>
  */
-public class BlockEntry implements Entry<ChannelBuffer, ChannelBuffer>
+public class BlockEntry implements Entry<byte[], ChannelBuffer>
 {
-    public static final Function<BlockEntry, ChannelBuffer> GET_KEY = new Function<BlockEntry, ChannelBuffer>()
+    public static final Function<BlockEntry, byte[]> GET_KEY = new Function<BlockEntry, byte[]>()
     {
         @Override
-        public ChannelBuffer apply(BlockEntry blockEntry)
+        public byte[] apply(BlockEntry blockEntry)
         {
             return blockEntry.getKey();
         }
     };
 
-    private final ChannelBuffer key;
+    private final byte[] key;
     private final ChannelBuffer value;
 
-    public BlockEntry(ChannelBuffer key, ChannelBuffer value)
+    public BlockEntry(byte[] key, ChannelBuffer value)
     {
         Preconditions.checkNotNull(key, "key is null");
         Preconditions.checkNotNull(value, "value is null");
@@ -93,9 +94,9 @@ public class BlockEntry implements Entry<ChannelBuffer, ChannelBuffer>
         this.value = value;
     }
 
-    public ChannelBuffer getKey()
+    public byte[] getKey()
     {
-        return key.duplicate();
+        return key;
     }
 
     public ChannelBuffer getValue()
@@ -125,7 +126,7 @@ public class BlockEntry implements Entry<ChannelBuffer, ChannelBuffer>
 
         BlockEntry entry = (BlockEntry) o;
 
-        if (!key.equals(entry.key)) {
+        if (!Arrays.equals(key, entry.key)) {
             return false;
         }
         if (!value.equals(entry.value)) {
@@ -138,7 +139,7 @@ public class BlockEntry implements Entry<ChannelBuffer, ChannelBuffer>
     @Override
     public int hashCode()
     {
-        int result = key.hashCode();
+        int result = Arrays.hashCode(key);
         result = 31 * result + value.hashCode();
         return result;
     }
@@ -148,7 +149,7 @@ public class BlockEntry implements Entry<ChannelBuffer, ChannelBuffer>
     {
         final StringBuilder sb = new StringBuilder();
         sb.append("BlockEntry");
-        sb.append("{key=").append(key.toString(UTF_8));      // todo don't print the real value
+        sb.append("{key=").append(new String(key, UTF_8));      // todo don't print the real value
         sb.append(", value=").append(value.toString(UTF_8));
         sb.append('}');
         return sb.toString();

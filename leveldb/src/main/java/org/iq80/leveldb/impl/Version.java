@@ -143,7 +143,7 @@ public class Version implements SeekingIterable<InternalKey, ChannelBuffer>
         return null;
     }
 
-    public boolean overlapInLevel(int level, ChannelBuffer smallestUserKey, ChannelBuffer largestUserKey)
+    public boolean overlapInLevel(int level, byte[] smallestUserKey, byte[] largestUserKey)
     {
         Preconditions.checkElementIndex(level, levels.size(), "Invalid level");
         Preconditions.checkNotNull(smallestUserKey, "smallestUserKey is null");
@@ -228,7 +228,7 @@ public class Version implements SeekingIterable<InternalKey, ChannelBuffer>
                 else {
                     // "ikey" falls in the range for this table.  Add the
                     // approximate offset of "ikey" within the table.
-                    result += tableCache.getApproximateOffsetOf(fileMetaData, key.encode());
+                    result += tableCache.getApproximateOffsetOf(fileMetaData, key.encodeBytes());
                 }
             }
         }
