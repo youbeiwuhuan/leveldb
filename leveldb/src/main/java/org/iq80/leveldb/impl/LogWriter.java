@@ -22,6 +22,14 @@ import org.iq80.leveldb.util.Slice;
 import java.io.File;
 import java.io.IOException;
 
+/**
+ *
+ *
+ *
+ *
+ *
+ *
+ */
 public interface LogWriter
 {
     boolean isClosed();

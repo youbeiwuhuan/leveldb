@@ -22,6 +22,7 @@ import java.util.Map;
 
 /**
  * @author <a href="http://hiramchirino.com">Hiram Chirino</a>
+ *  表示一个数据库对象s
  */
 public interface DB
         extends Iterable<Map.Entry<byte[], byte[]>>, Closeable

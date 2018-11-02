@@ -29,10 +29,22 @@ import java.nio.channels.FileLock;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
+/**
+ * 数据库锁
+ */
 public class DbLock
 {
+    /**
+     * 锁文件
+     */
     private final File lockFile;
+    /**
+     * 创建锁的文件通道
+     */
     private final FileChannel channel;
+    /**
+     * 对应的文件锁
+     */
     private final FileLock lock;
 
     public DbLock(File lockFile)
@@ -56,6 +68,11 @@ public class DbLock
         }
     }
 
+    /**
+     * 锁是否可用
+     *
+     * @return
+     */
     public boolean isValid()
     {
         return lock.isValid();

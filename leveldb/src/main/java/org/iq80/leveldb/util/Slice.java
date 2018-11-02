@@ -43,8 +43,17 @@ import static org.iq80.leveldb.util.SizeOf.SIZE_OF_SHORT;
 public final class Slice
         implements Comparable<Slice>
 {
+    /**
+     * 存储字符串
+     */
     private final byte[] data;
+    /**
+     * 偏移量
+     */
     private final int offset;
+    /**
+     * 总长度
+     */
     private final int length;
 
     private int hash;

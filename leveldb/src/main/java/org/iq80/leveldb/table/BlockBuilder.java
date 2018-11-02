@@ -31,13 +31,68 @@ import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
 import static org.iq80.leveldb.util.SizeOf.SIZE_OF_INT;
 
+/**
+ * block 结构：record(即BlockEntry)存数据
+ *
+ * <pre>
+ * +--------------+
+ * |  record 1    |
+ * +--------------+
+ * |  record 2    |
+ * +--------------+
+ * |  record 3    |
+ * +--------------+
+ * |  record 4    |
+ * +--------------+
+ * |  record 5    |
+ * +--------------+
+ * |  ......      |
+ * +--------------+
+ * |  resart 1    |
+ * +--------------+
+ * |  resart 2    |
+ * +--------------+
+ * |  resart 3    |
+ * +--------------+
+ * |  resart 4    |
+ * +--------------+
+ * |  resart 5    |
+ * +--------------+
+ * |   ......     |
+ * +--------------+
+ * | num_restarts |
+ * +--------------+
+ * |   type       |  type和crc32只是读取时做校验
+ * +--------------+
+ * |    crc32     |
+ * +--------------+
+ *
+ *  record结构
+ *  +-----------------+------------------+--------------+---------------+------------+
+ *  |  key共享长度    | key非共享长度     | value长度    | key非共享的内容| value内容  |
+ *  +-----------------+------------------+--------------+---------------+------------+
+ *
+ * </pre>
+ */
 public class BlockBuilder
 {
+    /**
+     * block重启点的间隔
+     */
     private final int blockRestartInterval;
+    /**
+     * 重启点列表
+     */
     private final IntVector restartPositions;
     private final Comparator<Slice> comparator;
 
+    /**
+     * record 的数量
+     */
     private int entryCount;
+    /**
+     * 重启点的数量
+     */
     private int restartBlockEntryCount;
 
     private boolean finished;

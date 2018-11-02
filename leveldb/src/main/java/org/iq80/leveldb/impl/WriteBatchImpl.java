@@ -31,7 +31,13 @@ import static java.util.Objects.requireNonNull;
 public class WriteBatchImpl
         implements WriteBatch
 {
+    /**
+     * 保存每一次的操作，entry里vaule为空表示删除，不为空表示添加
+     */
     private final List<Entry<Slice, Slice>> batch = new ArrayList<>();
+    /**
+     * 保存key和value的总大小
+     */
     private int approximateSize;
 
     public int getApproximateSize()
@@ -50,6 +56,9 @@ public class WriteBatchImpl
         requireNonNull(key, "key is null");
         requireNonNull(value, "value is null");
         batch.add(Maps.immutableEntry(Slices.wrappedBuffer(key), Slices.wrappedBuffer(value)));
+        /**
+         * 在存储当前字符串时，需要有一个8字节的序列号和4字节的记录数作为头，因此在申请空间存放的时候要多加上12个字节的大小
+         */
         approximateSize += 12 + key.length + value.length;
         return this;
     }
@@ -85,6 +94,10 @@ public class WriteBatchImpl
     {
     }
 
+    /**
+     * 处理批量操作
+     * @param handler
+     */
     public void forEach(Handler handler)
     {
         for (Entry<Slice, Slice> entry : batch) {

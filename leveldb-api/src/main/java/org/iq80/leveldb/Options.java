@@ -17,6 +17,9 @@
  */
 package org.iq80.leveldb;
 
+/**
+ * Options 表示用户选项，通过它，用户可以对数据库进行其他的控制
+ */
 public class Options
 {
     private boolean createIfMissing = true;

@@ -17,6 +17,9 @@
  */
 package org.iq80.leveldb;
 
+/**
+ * 表示写选项，主要用在用户插入数据或者删除数据的时候
+ */
 public class WriteOptions
 {
     private boolean sync;

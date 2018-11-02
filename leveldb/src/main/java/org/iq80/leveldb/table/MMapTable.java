@@ -36,6 +36,9 @@ import java.util.concurrent.Callable;
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.iq80.leveldb.CompressionType.SNAPPY;
 
+/**
+ * 内存映射文件方式的Table
+ */
 public class MMapTable
         extends Table
 {

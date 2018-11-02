@@ -34,9 +34,27 @@ import java.util.concurrent.Callable;
 import static com.google.common.base.Preconditions.checkArgument;
 import static java.util.Objects.requireNonNull;
 
+/**
+ * 即sstable,对应.sst文件
+ *
+ * <beginning_of_file>
+ * [data block 1]
+ * [data block 2]
+ * ...
+ * [data block N]
+ * [meta block 1]
+ * ...
+ * [meta block K]
+ * [metaindex block]
+ * [index block]
+ * [Footer]        (fixed size; starts at file_size - sizeof(Footer))
+ * <end_of_file>
+ *
+ *
+ *
+ */
 public abstract class Table
-        implements SeekingIterable<Slice, Slice>
-{
+        implements SeekingIterable<Slice, Slice> {
     protected final String name;
     protected final FileChannel fileChannel;
     protected final Comparator<Slice> comparator;
@@ -45,8 +63,7 @@ public abstract class Table
     protected final BlockHandle metaindexBlockHandle;
 
     public Table(String name, FileChannel fileChannel, Comparator<Slice> comparator, boolean verifyChecksums)
-            throws IOException
-    {
+            throws IOException {
         requireNonNull(name, "name is null");
         requireNonNull(fileChannel, "fileChannel is null");
         long size = fileChannel.size();
@@ -67,19 +84,16 @@ public abstract class Table
             throws IOException;
 
     @Override
-    public TableIterator iterator()
-    {
+    public TableIterator iterator() {
         return new TableIterator(this, indexBlock.iterator());
     }
 
-    public Block openBlock(Slice blockEntry)
-    {
+    public Block openBlock(Slice blockEntry) {
         BlockHandle blockHandle = BlockHandle.readBlockHandle(blockEntry.input());
         Block dataBlock;
         try {
             dataBlock = readBlock(blockHandle);
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             throw Throwables.propagate(e);
         }
         return dataBlock;
@@ -91,8 +105,7 @@ public abstract class Table
             throws IOException;
 
     protected int uncompressedLength(ByteBuffer data)
-            throws IOException
-    {
+            throws IOException {
         int length = VariableLengthQuantity.readVariableLengthInt(data.duplicate());
         return length;
     }
@@ -105,8 +118,7 @@ public abstract class Table
      * For example, the approximate offset of the last key in the table will
      * be close to the file length.
      */
-    public long getApproximateOffsetOf(Slice key)
-    {
+    public long getApproximateOffsetOf(Slice key) {
         BlockIterator iterator = indexBlock.iterator();
         iterator.seek(key);
         if (iterator.hasNext()) {
@@ -121,8 +133,7 @@ public abstract class Table
     }
 
     @Override
-    public String toString()
-    {
+    public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("Table");
         sb.append("{name='").append(name).append('\'');
@@ -132,24 +143,20 @@ public abstract class Table
         return sb.toString();
     }
 
-    public Callable<?> closer()
-    {
+    public Callable<?> closer() {
         return new Closer(fileChannel);
     }
 
     private static class Closer
-            implements Callable<Void>
-    {
+            implements Callable<Void> {
         private final Closeable closeable;
 
-        public Closer(Closeable closeable)
-        {
+        public Closer(Closeable closeable) {
             this.closeable = closeable;
         }
 
         @Override
-        public Void call()
-        {
+        public Void call() {
             Closeables.closeQuietly(closeable);
             return null;
         }

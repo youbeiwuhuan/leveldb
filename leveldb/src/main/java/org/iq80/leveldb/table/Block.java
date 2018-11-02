@@ -60,14 +60,28 @@ import static org.iq80.leveldb.util.SizeOf.SIZE_OF_INT;
  * </tr>
  * </tbody>
  * </table>
+ *
+ *
+ *
+ *
+ *
+ *
  */
 public class Block
         implements SeekingIterable<Slice, Slice>
 {
+    /**
+     * block全部数据
+     */
     private final Slice block;
     private final Comparator<Slice> comparator;
-
+    /**
+     * block的数据部分
+     */
     private final Slice data;
+    /**
+     * 重启点
+     */
     private final Slice restartPositions;
 
     public Block(Slice block, Comparator<Slice> comparator)

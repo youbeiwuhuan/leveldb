@@ -31,6 +31,9 @@ import java.util.Map;
 
 import static java.util.Objects.requireNonNull;
 
+/**
+ * Slice的工具
+ */
 public final class Slices
 {
     public static Slice readLengthPrefixedBytes(SliceInput sliceInput)

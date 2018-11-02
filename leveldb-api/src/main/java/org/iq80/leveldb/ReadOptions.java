@@ -17,6 +17,9 @@
  */
 package org.iq80.leveldb;
 
+/**
+ * 表示读选项，主要用在用户查询数据的时候
+ */
 public class ReadOptions
 {
     private boolean verifyChecksums;

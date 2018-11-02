@@ -25,6 +25,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
 
 /**
+ * Block 中 record 部分的格式
+ *
  * Binary Structure
  * <table summary="record format">
  * <tbody>
